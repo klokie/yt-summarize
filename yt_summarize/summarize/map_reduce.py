@@ -19,7 +19,18 @@ MAP_OUTPUT_SCHEMA = {
         "key_points": {"type": "array", "items": {"type": "string"}},
         "quotes": {"type": "array", "items": {"type": "string"}},
         "topics": {"type": "array", "items": {"type": "string"}},
-        "terms": {"type": "object", "additionalProperties": {"type": "string"}},
+        "terms": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "term": {"type": "string"},
+                    "definition": {"type": "string"},
+                },
+                "required": ["term", "definition"],
+                "additionalProperties": False,
+            },
+        },
     },
     "required": ["key_points", "quotes", "topics", "terms"],
     "additionalProperties": False,
@@ -220,7 +231,7 @@ def _map_chunk(client: OpenAI, chunk: str, model: str, use_structured: bool = Tr
                 response = response[4:]
         return json.loads(response)
     except json.JSONDecodeError:
-        return {"key_points": [], "quotes": [], "topics": [], "terms": {}}
+        return {"key_points": [], "quotes": [], "topics": [], "terms": []}
 
 
 def _reduce_chunks_structured(

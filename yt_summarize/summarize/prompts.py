@@ -19,7 +19,7 @@ Respond in this exact JSON format:
   "key_points": ["point 1", "point 2", ...],
   "quotes": ["quote 1", ...],
   "topics": ["topic 1", ...],
-  "terms": {{"term": "definition", ...}}
+  "terms": [{{"term": "example", "definition": "explanation"}}, ...]
 }}"""
 
 REDUCE_SYSTEM = """You are an expert at creating comprehensive video summaries.
