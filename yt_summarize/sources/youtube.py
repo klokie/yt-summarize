@@ -438,3 +438,66 @@ def fetch_youtube_transcript(
         audio_output_dir = Path(tempfile.gettempdir()) / "yt-summarize" / video_id
 
     return download_audio(video_id, audio_output_dir, max_minutes)
+
+
+def fetch_youtube_transcript_with_stt(
+    url: str,
+    lang: str = "auto",
+    allow_audio_fallback: bool = True,
+    audio_output_dir: Path | None = None,
+    max_minutes: int = 180,
+    stt_model: str = "whisper-1",
+) -> TranscriptResult:
+    """
+    Fetch transcript from YouTube video, with full STT fallback.
+
+    This is a convenience function that handles the complete pipeline:
+    1. Try captions via youtube-transcript-api
+    2. Try subtitles via yt-dlp
+    3. Download audio and transcribe via OpenAI STT
+
+    Args:
+        url: YouTube URL or video ID
+        lang: Language code or "auto"
+        allow_audio_fallback: Whether to use STT if no captions
+        audio_output_dir: Directory for audio files
+        max_minutes: Maximum video length
+        stt_model: OpenAI STT model (whisper-1, gpt-4o-transcribe, etc.)
+
+    Returns:
+        TranscriptResult with text and metadata
+
+    Raises:
+        ValueError: Invalid URL
+        TranscriptNotAvailable: No transcript available
+    """
+    from yt_summarize.transcribe.openai_stt import transcribe_audio
+
+    result = fetch_youtube_transcript(
+        url=url,
+        lang=lang,
+        allow_audio_fallback=allow_audio_fallback,
+        audio_output_dir=audio_output_dir,
+        max_minutes=max_minutes,
+    )
+
+    # If we got a TranscriptResult, return it directly
+    if isinstance(result, TranscriptResult):
+        return result
+
+    # Otherwise, we have AudioDownloadResult - transcribe it
+    audio_result = result
+    text = transcribe_audio(
+        audio_path=audio_result.audio_path,
+        model=stt_model,
+        lang=lang if lang != "auto" else None,
+    )
+
+    return TranscriptResult(
+        text=text,
+        video_id=audio_result.video_id,
+        title=audio_result.title,
+        channel=audio_result.channel,
+        lang=lang if lang != "auto" else "auto",
+        method="stt",
+    )

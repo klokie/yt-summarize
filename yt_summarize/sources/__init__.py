@@ -9,6 +9,7 @@ from .youtube import (
     download_audio,
     fetch_subtitles_ytdlp,
     fetch_youtube_transcript,
+    fetch_youtube_transcript_with_stt,
 )
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "download_audio",
     "fetch_subtitles_ytdlp",
     "fetch_youtube_transcript",
+    "fetch_youtube_transcript_with_stt",
     "load_local_transcript",
 ]
