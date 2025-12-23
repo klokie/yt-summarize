@@ -6,6 +6,7 @@ import pytest
 
 from yt_summarize.sources.youtube import (
     TranscriptNotAvailable,
+    _parse_vtt,
     _snippets_to_text,
     extract_video_id,
     fetch_transcript_api,
@@ -68,6 +69,69 @@ class TestSnippetsToText:
         ]
         result = _snippets_to_text(snippets)
         assert result == "Content"
+
+
+class TestParseVtt:
+    """Tests for VTT parsing."""
+
+    def test_basic_vtt(self) -> None:
+        vtt = """WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Hello world
+
+00:00:02.000 --> 00:00:04.000
+How are you
+"""
+        result = _parse_vtt(vtt)
+        assert result == "Hello world How are you"
+
+    def test_removes_tags(self) -> None:
+        vtt = """WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+<c>Hello</c> <00:00:01.000>world
+"""
+        result = _parse_vtt(vtt)
+        assert result == "Hello world"
+
+    def test_removes_speaker_labels(self) -> None:
+        vtt = """WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+[Music] Hello world (applause)
+"""
+        result = _parse_vtt(vtt)
+        assert result == "Hello world"
+
+    def test_dedupes_consecutive_lines(self) -> None:
+        vtt = """WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+Hello
+
+00:00:01.000 --> 00:00:02.000
+Hello
+
+00:00:02.000 --> 00:00:03.000
+World
+"""
+        result = _parse_vtt(vtt)
+        assert result == "Hello World"
+
+    def test_handles_cue_identifiers(self) -> None:
+        vtt = """WEBVTT
+
+1
+00:00:00.000 --> 00:00:02.000
+First line
+
+cue-2
+00:00:02.000 --> 00:00:04.000
+Second line
+"""
+        result = _parse_vtt(vtt)
+        assert result == "First line Second line"
 
 
 class TestFetchTranscriptApi:
