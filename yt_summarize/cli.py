@@ -21,6 +21,11 @@ from .cache import (
     load_summary,
     load_transcript,
 )
+from .costs import (
+    estimate_summarization_cost,
+    estimate_transcription_cost,
+    format_cost_warning,
+)
 from .sources.local_file import load_local_transcript
 from .sources.youtube import (
     AudioDownloadResult,
@@ -29,7 +34,7 @@ from .sources.youtube import (
     extract_video_id,
     fetch_youtube_transcript,
 )
-from .summarize import SummarizationError, SummarizeOptions, summarize_transcript
+from .summarize import SummarizationError, SummarizeOptions, count_tokens, summarize_transcript
 from .transcribe import TranscriptionError, transcribe_audio
 
 # Main app
@@ -124,6 +129,10 @@ def summarize(
         bool,
         typer.Option("--local-only", help="Export transcript only, no AI calls"),
     ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip cost confirmation prompts"),
+    ] = False,
     verbose: Annotated[
         bool,
         typer.Option("--verbose", "-v", help="Verbose output"),
@@ -191,6 +200,21 @@ def summarize(
                     )
 
                     if isinstance(result, AudioDownloadResult):
+                        # Cost warning for STT
+                        stt_estimate = estimate_transcription_cost(
+                            result.duration_seconds, transcribe_model
+                        )
+                        if stt_estimate["should_warn"] and not yes:
+                            console.print(
+                                format_cost_warning(
+                                    "Audio transcription",
+                                    stt_estimate["estimated_cost"],
+                                    f"{stt_estimate['duration_minutes']:.1f} min of audio",
+                                )
+                            )
+                            if not typer.confirm("Continue?"):
+                                raise typer.Exit(0)
+
                         # Need to transcribe audio
                         progress.add_task("Transcribing audio...", total=None)
                         try:
@@ -306,6 +330,21 @@ def summarize(
                 json_summary = cached_summary.json_data
 
         if cached_summary is None:
+            # Cost warning for summarization
+            token_count = count_tokens(transcript_text, model)
+            summary_estimate = estimate_summarization_cost(token_count, chunk_tokens, model)
+
+            if summary_estimate["should_warn"] and not yes:
+                console.print(
+                    format_cost_warning(
+                        "Summarization",
+                        summary_estimate["estimated_cost"],
+                        f"{token_count:,} tokens → {summary_estimate['num_chunks']} chunks",
+                    )
+                )
+                if not typer.confirm("Continue?"):
+                    raise typer.Exit(0)
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
