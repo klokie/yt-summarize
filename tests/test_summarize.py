@@ -199,13 +199,129 @@ class TestSummarizeTranscript:
             source_url="https://example.com",
             output_format="json",
         )
-        md_result, json_result = summarize_transcript("Short transcript.", opts)
+        # Test with structured output disabled (legacy mode)
+        md_result, json_result = summarize_transcript(
+            "Short transcript.", opts, use_structured_output=False
+        )
 
         assert md_result is None
         assert json_result is not None
         assert isinstance(json_result, SummarySchema)
         assert json_result.title == "Test Video"
         assert len(json_result.tldr) == 3
+
+    @patch("yt_summarize.summarize.map_reduce._get_client")
+    def test_summarize_json_structured(self, mock_get_client: MagicMock) -> None:
+        """Test JSON summarization with structured output (guaranteed schema)."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        # Mock map phase response (structured output returns clean JSON)
+        map_response = MagicMock()
+        map_response.choices = [
+            MagicMock(
+                message=MagicMock(
+                    content=json.dumps(
+                        {
+                            "key_points": ["Point 1"],
+                            "quotes": ["A quote"],
+                            "topics": ["Topic"],
+                            "terms": {},
+                        }
+                    )
+                )
+            )
+        ]
+
+        # Mock reduce phase response (structured output)
+        json_output = {
+            "title": "Structured Test",
+            "source_url": "https://example.com",
+            "tldr": ["TL1", "TL2", "TL3"],
+            "key_points": ["Key 1", "Key 2", "Key 3"],
+            "chapters": [{"start": "0:00", "heading": "Intro", "bullets": ["point"]}],
+            "quotes": ["Quote here"],
+            "action_items": ["Action 1"],
+            "tags": ["tag1"],
+        }
+        reduce_response = MagicMock()
+        reduce_response.choices = [
+            MagicMock(message=MagicMock(content=json.dumps(json_output)))
+        ]
+
+        mock_client.chat.completions.create.side_effect = [map_response, reduce_response]
+
+        opts = SummarizeOptions(
+            title="Structured Test",
+            source_url="https://example.com",
+            output_format="json",
+        )
+        # Test with structured output enabled (default)
+        md_result, json_result = summarize_transcript("Short text.", opts)
+
+        assert md_result is None
+        assert json_result is not None
+        assert json_result.title == "Structured Test"
+
+        # Verify structured output was requested
+        call_kwargs = mock_client.chat.completions.create.call_args_list[-1].kwargs
+        assert "response_format" in call_kwargs
+        assert call_kwargs["response_format"]["type"] == "json_schema"
+
+    @patch("yt_summarize.summarize.map_reduce._get_client")
+    def test_summarize_both_formats(self, mock_get_client: MagicMock) -> None:
+        """Test generating both MD and JSON output."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        map_response = MagicMock()
+        map_response.choices = [
+            MagicMock(
+                message=MagicMock(
+                    content=json.dumps(
+                        {"key_points": ["P1"], "quotes": [], "topics": [], "terms": {}}
+                    )
+                )
+            )
+        ]
+
+        md_response = MagicMock()
+        md_response.choices = [
+            MagicMock(message=MagicMock(content="# Title\n\n## TL;DR\n- Point"))
+        ]
+
+        json_output = {
+            "title": "Both",
+            "source_url": "https://example.com",
+            "tldr": ["1", "2", "3"],
+            "key_points": ["K1"],
+            "chapters": [{"start": "0:00", "heading": "Ch", "bullets": ["b"]}],
+            "quotes": [],
+            "action_items": ["A1"],
+            "tags": ["t1"],
+        }
+        json_response = MagicMock()
+        json_response.choices = [
+            MagicMock(message=MagicMock(content=json.dumps(json_output)))
+        ]
+
+        mock_client.chat.completions.create.side_effect = [
+            map_response,
+            md_response,
+            json_response,
+        ]
+
+        opts = SummarizeOptions(
+            title="Both",
+            source_url="https://example.com",
+            output_format="md,json",
+        )
+        md_result, json_result = summarize_transcript("Text.", opts)
+
+        assert md_result is not None
+        assert json_result is not None
+        assert "TL;DR" in md_result
+        assert json_result.title == "Both"
 
 
 class TestSummarySchema:
