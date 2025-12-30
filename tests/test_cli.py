@@ -195,4 +195,3 @@ class TestUrlParsing:
 
         assert result.exit_code == 0
         assert (tmp_path / "out" / "transcript.txt").exists()
-

@@ -50,9 +50,7 @@ class TestEstimateTranscriptionCost:
 
     def test_long_audio_warns(self) -> None:
         """Test that long audio triggers warning."""
-        result = estimate_transcription_cost(
-            (WARN_AUDIO_MINUTES + 10) * 60, model="whisper-1"
-        )
+        result = estimate_transcription_cost((WARN_AUDIO_MINUTES + 10) * 60, model="whisper-1")
 
         assert result["duration_minutes"] > WARN_AUDIO_MINUTES
         assert result["should_warn"] is True
@@ -72,4 +70,3 @@ class TestFormatCostWarning:
         msg = format_cost_warning("Test", 1.25, "100 tokens")
         assert "100 tokens" in msg
         assert "$1.250" in msg
-

@@ -159,10 +159,14 @@ def transcribe_audio_chunked(
         # Split audio into chunks
         cmd = [
             "ffmpeg",
-            "-i", str(audio_path),
-            "-f", "segment",
-            "-segment_time", str(chunk_duration_minutes * 60),
-            "-c", "copy",
+            "-i",
+            str(audio_path),
+            "-f",
+            "segment",
+            "-segment_time",
+            str(chunk_duration_minutes * 60),
+            "-c",
+            "copy",
             "-y",
             str(chunk_pattern),
         ]

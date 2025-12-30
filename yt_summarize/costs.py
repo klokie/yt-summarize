@@ -98,4 +98,3 @@ def format_cost_warning(
     if details:
         msg += f"\n   {details}"
     return msg
-

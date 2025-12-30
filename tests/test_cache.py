@@ -53,7 +53,9 @@ class TestCacheKeys:
 class TestTranscriptCache:
     """Tests for transcript caching."""
 
-    def test_create_and_load_transcript(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_create_and_load_transcript(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test creating and loading cached transcript."""
         # Use temp dir as cache
         monkeypatch.setenv("HOME", str(tmp_path))
@@ -87,7 +89,9 @@ class TestTranscriptCache:
 class TestSummaryCache:
     """Tests for summary caching."""
 
-    def test_create_and_load_summary_md(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_create_and_load_summary_md(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test caching markdown summary."""
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -107,7 +111,9 @@ class TestSummaryCache:
         assert loaded.markdown == "# Summary\n\nContent here."
         assert loaded.json_data is None
 
-    def test_create_and_load_summary_json(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_create_and_load_summary_json(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test caching JSON summary."""
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -124,7 +130,9 @@ class TestSummaryCache:
         assert loaded is not None
         assert loaded.json_data == json_data
 
-    def test_load_summary_missing_format(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_load_summary_missing_format(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that loading returns None if requested format isn't cached."""
         monkeypatch.setenv("HOME", str(tmp_path))
 

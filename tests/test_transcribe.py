@@ -49,9 +49,7 @@ class TestTranscribeAudio:
             transcribe_audio(audio_file)
 
     @patch("yt_summarize.transcribe.openai_stt._get_client")
-    def test_successful_transcription(
-        self, mock_get_client: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_successful_transcription(self, mock_get_client: MagicMock, tmp_path: Path) -> None:
         """Test successful transcription."""
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
@@ -132,4 +130,3 @@ class TestSupportedFormats:
         assert ".m4a" in SUPPORTED_FORMATS
         assert ".wav" in SUPPORTED_FORMATS
         assert ".webm" in SUPPORTED_FORMATS
-

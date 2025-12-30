@@ -183,9 +183,12 @@ def fetch_subtitles_ytdlp(
             "--skip-download",
             "--no-playlist",
             *lang_args,
-            "--sub-format", "vtt",
-            "--convert-subs", "vtt",
-            "-o", str(work_dir / "%(id)s.%(ext)s"),
+            "--sub-format",
+            "vtt",
+            "--convert-subs",
+            "vtt",
+            "-o",
+            str(work_dir / "%(id)s.%(ext)s"),
             url,
         ]
 
@@ -258,10 +261,13 @@ def download_audio(
     cmd = [
         "yt-dlp",
         "-x",  # extract audio
-        "--audio-format", "mp3",
-        "--audio-quality", "0",  # best quality
+        "--audio-format",
+        "mp3",
+        "--audio-quality",
+        "0",  # best quality
         "--no-playlist",
-        "-o", output_template,
+        "-o",
+        output_template,
         url,
     ]
 

@@ -188,9 +188,7 @@ class TestSummarizeTranscript:
             "tags": ["tag1", "tag2"],
         }
         reduce_response = MagicMock()
-        reduce_response.choices = [
-            MagicMock(message=MagicMock(content=json.dumps(json_output)))
-        ]
+        reduce_response.choices = [MagicMock(message=MagicMock(content=json.dumps(json_output)))]
 
         mock_client.chat.completions.create.side_effect = [map_response, reduce_response]
 
@@ -245,9 +243,7 @@ class TestSummarizeTranscript:
             "tags": ["tag1"],
         }
         reduce_response = MagicMock()
-        reduce_response.choices = [
-            MagicMock(message=MagicMock(content=json.dumps(json_output)))
-        ]
+        reduce_response.choices = [MagicMock(message=MagicMock(content=json.dumps(json_output)))]
 
         mock_client.chat.completions.create.side_effect = [map_response, reduce_response]
 
@@ -286,9 +282,7 @@ class TestSummarizeTranscript:
         ]
 
         md_response = MagicMock()
-        md_response.choices = [
-            MagicMock(message=MagicMock(content="# Title\n\n## TL;DR\n- Point"))
-        ]
+        md_response.choices = [MagicMock(message=MagicMock(content="# Title\n\n## TL;DR\n- Point"))]
 
         json_output = {
             "title": "Both",
@@ -301,9 +295,7 @@ class TestSummarizeTranscript:
             "tags": ["t1"],
         }
         json_response = MagicMock()
-        json_response.choices = [
-            MagicMock(message=MagicMock(content=json.dumps(json_output)))
-        ]
+        json_response.choices = [MagicMock(message=MagicMock(content=json.dumps(json_output)))]
 
         mock_client.chat.completions.create.side_effect = [
             map_response,
@@ -350,4 +342,3 @@ class TestSummarySchema:
         data = {"title": "Test Video"}
         with pytest.raises(ValidationError):
             SummarySchema(**data)
-
