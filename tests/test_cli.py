@@ -12,22 +12,36 @@ runner = CliRunner()
 
 
 class TestSummarizeCommand:
-    """Tests for summarize command."""
+    """Tests for summarize command (default behavior)."""
 
     def test_help(self) -> None:
         """Test help output."""
+        result = runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        assert "summarize" in result.output
+
+    def test_summarize_help(self) -> None:
+        """Test summarize subcommand help."""
         result = runner.invoke(app, ["summarize", "--help"])
         assert result.exit_code == 0
         assert "YouTube URL or local .txt file" in result.output
 
-    def test_missing_source(self) -> None:
-        """Test error when source is missing."""
-        result = runner.invoke(app, ["summarize"])
-        assert result.exit_code != 0
+    def test_missing_source_shows_help(self) -> None:
+        """Test that missing source shows help."""
+        result = runner.invoke(app, [])
+        assert result.exit_code == 0
 
     def test_local_file_not_found(self) -> None:
         """Test error when local file doesn't exist."""
+        # Test with explicit summarize command
         result = runner.invoke(app, ["summarize", "/nonexistent/file.txt"])
+        assert result.exit_code == 1
+        assert "File not found" in result.output
+
+    def test_local_file_not_found_default(self) -> None:
+        """Test default routing to summarize for unknown args."""
+        # Test default command routing (no explicit summarize)
+        result = runner.invoke(app, ["/nonexistent/file.txt"])
         assert result.exit_code == 1
         assert "File not found" in result.output
 

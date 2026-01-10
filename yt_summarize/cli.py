@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import typer.core
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -37,10 +38,25 @@ from .sources.youtube import (
 from .summarize import SummarizationError, SummarizeOptions, count_tokens, summarize_transcript
 from .transcribe import TranscriptionError, transcribe_audio
 
-# Main app
+# Main app - use TyperGroup subclass for default command support
+class DefaultGroup(typer.core.TyperGroup):
+    """TyperGroup that routes unknown commands to a default command."""
+
+    def __init__(self, *args, default_cmd_name: str = "summarize", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default_cmd_name = default_cmd_name
+
+    def resolve_command(self, ctx, args):
+        # If first arg looks like a file/URL rather than a command, route to default
+        if args and args[0] not in self.commands:
+            return self.default_cmd_name, self.get_command(ctx, self.default_cmd_name), args
+        return super().resolve_command(ctx, args)
+
+
 app = typer.Typer(
     name="yt-summarize",
     help="Fetch YouTube transcripts and generate AI summaries.",
+    cls=DefaultGroup,
     no_args_is_help=True,
 )
 
