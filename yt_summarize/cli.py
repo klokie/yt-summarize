@@ -72,6 +72,28 @@ def _is_youtube_url(source: str) -> bool:
     return extract_video_id(source) is not None
 
 
+def _sanitize_dirname(name: str, max_length: int = 100) -> str:
+    """Sanitize a string for use as a directory name."""
+    import re
+
+    # Replace problematic characters with safe alternatives
+    name = name.replace("/", "-").replace("\\", "-")
+    name = name.replace(":", " -").replace("|", "-")
+    name = name.replace("?", "").replace("*", "")
+    name = name.replace('"', "'").replace("<", "").replace(">", "")
+
+    # Collapse multiple spaces/dashes
+    name = re.sub(r"[\s]+", " ", name)
+    name = re.sub(r"-+", "-", name)
+
+    # Strip and truncate
+    name = name.strip(" .-")
+    if len(name) > max_length:
+        name = name[:max_length].strip(" .-")
+
+    return name or "untitled"
+
+
 def _write_outputs(
     out_dir: Path,
     transcript_text: str,
@@ -160,13 +182,13 @@ def summarize(
     if verbose:
         console.print(f"[dim]Source type: {'YouTube' if is_youtube else 'Local file'}[/dim]")
 
-    # Determine output directory
-    if out is None:
-        if is_youtube:
-            video_id = extract_video_id(source)
-            out = Path("./yt-summary") / video_id
-        else:
-            out = Path("./yt-summary") / Path(source).stem
+    # Track if user provided explicit output dir
+    user_provided_out = out is not None
+
+    # For YouTube, we'll determine output dir after getting the title
+    # For local files, use the filename stem
+    if out is None and not is_youtube:
+        out = Path("./yt-summary") / Path(source).stem
 
     transcript_text: str | None = None
     video_id: str | None = None
@@ -206,12 +228,14 @@ def summarize(
 
             if transcript_text is None:
                 progress.add_task("Fetching transcript...", total=None)
+                # Use video_id for audio temp dir (title not known yet)
+                audio_dir = Path("./yt-summary") / video_id / ".audio" if not no_audio_fallback else None
                 try:
                     result = fetch_youtube_transcript(
                         source,
                         lang=lang,
                         allow_audio_fallback=not no_audio_fallback,
-                        audio_output_dir=out / ".audio" if not no_audio_fallback else None,
+                        audio_output_dir=audio_dir,
                         max_minutes=max_minutes,
                     )
 
@@ -327,6 +351,11 @@ def summarize(
                     lang="",
                     method="file",
                 )
+
+    # Determine output directory from title (if not user-provided)
+    if not user_provided_out and is_youtube:
+        video_title = meta.get("title", video_id)
+        out = Path("./yt-summary") / _sanitize_dirname(video_title)
 
     console.print(f"[green]✓[/green] Transcript: {len(transcript_text)} chars")
 
