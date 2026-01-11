@@ -29,7 +29,9 @@ class TestSummarizeCommand:
     def test_missing_source_shows_help(self) -> None:
         """Test that missing source shows help."""
         result = runner.invoke(app, [])
-        assert result.exit_code == 0
+        # Exit code varies by typer version (0 or 2 for no_args_is_help)
+        assert result.exit_code in (0, 2)
+        assert "summarize" in result.output or "Usage" in result.output
 
     def test_local_file_not_found(self) -> None:
         """Test error when local file doesn't exist."""
