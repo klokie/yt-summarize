@@ -38,6 +38,7 @@ from .sources.youtube import (
 from .summarize import SummarizationError, SummarizeOptions, count_tokens, summarize_transcript
 from .transcribe import TranscriptionError, transcribe_audio
 
+
 # Main app - use TyperGroup subclass for default command support
 class DefaultGroup(typer.core.TyperGroup):
     """TyperGroup that routes unknown commands to a default command."""
@@ -229,7 +230,9 @@ def summarize(
             if transcript_text is None:
                 progress.add_task("Fetching transcript...", total=None)
                 # Use video_id for audio temp dir (title not known yet)
-                audio_dir = Path("./yt-summary") / video_id / ".audio" if not no_audio_fallback else None
+                audio_dir = (
+                    Path("./yt-summary") / video_id / ".audio" if not no_audio_fallback else None
+                )
                 try:
                     result = fetch_youtube_transcript(
                         source,
