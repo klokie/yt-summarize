@@ -12,6 +12,19 @@ from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisable
 
 
 @dataclass
+class VideoMetadata:
+    """Metadata about a YouTube video."""
+
+    video_id: str
+    title: str
+    channel: str
+    channel_url: str | None = None
+    uploader_handle: str | None = None  # e.g., "@NateBJones"
+    upload_date: str | None = None  # ISO format: YYYY-MM-DD
+    duration_seconds: float = 0.0
+
+
+@dataclass
 class TranscriptResult:
     """Result of transcript fetch."""
 
@@ -21,6 +34,10 @@ class TranscriptResult:
     channel: str
     lang: str
     method: str  # "captions" | "subs" | "stt"
+    # Extended metadata
+    channel_url: str | None = None
+    uploader_handle: str | None = None
+    upload_date: str | None = None
 
 
 @dataclass
@@ -32,6 +49,10 @@ class AudioDownloadResult:
     title: str
     channel: str
     duration_seconds: float
+    # Extended metadata
+    channel_url: str | None = None
+    uploader_handle: str | None = None
+    upload_date: str | None = None
 
 
 class TranscriptNotAvailable(Exception):
@@ -67,9 +88,9 @@ def _check_ytdlp() -> None:
         raise YtDlpNotFound(f"yt-dlp check failed: {e}") from e
 
 
-def _fetch_video_metadata(video_id: str) -> tuple[str, str, float]:
+def _fetch_video_metadata(video_id: str) -> VideoMetadata:
     """
-    Fetch video title, channel name, and duration.
+    Fetch video metadata including title, channel, upload date, etc.
 
     Uses yt-dlp for metadata extraction (no download).
     Falls back to defaults if unavailable.
@@ -89,15 +110,30 @@ def _fetch_video_metadata(video_id: str) -> tuple[str, str, float]:
         )
         if result.returncode == 0:
             data = json.loads(result.stdout)
-            return (
-                data.get("title", video_id),
-                data.get("channel", "Unknown"),
-                data.get("duration", 0.0),
+
+            # Parse upload_date from YYYYMMDD to YYYY-MM-DD
+            upload_date = None
+            if (raw_date := data.get("upload_date")) and len(raw_date) == 8:
+                upload_date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
+
+            # Extract @handle from uploader_url
+            uploader_handle = None
+            if (uploader_url := data.get("uploader_url")) and "/@" in uploader_url:
+                uploader_handle = f"@{uploader_url.split('/@')[-1]}"
+
+            return VideoMetadata(
+                video_id=video_id,
+                title=data.get("title", video_id),
+                channel=data.get("channel", "Unknown"),
+                channel_url=data.get("channel_url"),
+                uploader_handle=uploader_handle,
+                upload_date=upload_date,
+                duration_seconds=data.get("duration", 0.0),
             )
     except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
         pass
 
-    return video_id, "Unknown", 0.0
+    return VideoMetadata(video_id=video_id, title=video_id, channel="Unknown")
 
 
 def _snippets_to_text(snippets: list) -> str:
@@ -247,12 +283,12 @@ def download_audio(
     _check_ytdlp()
 
     url = f"https://www.youtube.com/watch?v={video_id}"
-    title, channel, duration = _fetch_video_metadata(video_id)
+    metadata = _fetch_video_metadata(video_id)
 
     # Check duration
-    if duration > max_minutes * 60:
+    if metadata.duration_seconds > max_minutes * 60:
         raise TranscriptNotAvailable(
-            f"Video too long ({duration / 60:.0f} min > {max_minutes} min limit)"
+            f"Video too long ({metadata.duration_seconds / 60:.0f} min > {max_minutes} min limit)"
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -286,9 +322,12 @@ def download_audio(
     return AudioDownloadResult(
         audio_path=audio_files[0],
         video_id=video_id,
-        title=title,
-        channel=channel,
-        duration_seconds=duration,
+        title=metadata.title,
+        channel=metadata.channel,
+        duration_seconds=metadata.duration_seconds,
+        channel_url=metadata.channel_url,
+        uploader_handle=metadata.uploader_handle,
+        upload_date=metadata.upload_date,
     )
 
 
@@ -405,15 +444,18 @@ def fetch_youtube_transcript(
     # Try youtube-transcript-api first (fastest)
     try:
         text, found_lang = fetch_transcript_api(video_id, lang)
-        title, channel, _ = _fetch_video_metadata(video_id)
+        metadata = _fetch_video_metadata(video_id)
 
         return TranscriptResult(
             text=text,
             video_id=video_id,
-            title=title,
-            channel=channel,
+            title=metadata.title,
+            channel=metadata.channel,
             lang=found_lang,
             method="captions",
+            channel_url=metadata.channel_url,
+            uploader_handle=metadata.uploader_handle,
+            upload_date=metadata.upload_date,
         )
     except TranscriptNotAvailable:
         pass  # Try next method
@@ -421,15 +463,18 @@ def fetch_youtube_transcript(
     # Try yt-dlp subtitles
     try:
         text, found_lang = fetch_subtitles_ytdlp(video_id, lang)
-        title, channel, _ = _fetch_video_metadata(video_id)
+        metadata = _fetch_video_metadata(video_id)
 
         return TranscriptResult(
             text=text,
             video_id=video_id,
-            title=title,
-            channel=channel,
+            title=metadata.title,
+            channel=metadata.channel,
             lang=found_lang,
             method="subs",
+            channel_url=metadata.channel_url,
+            uploader_handle=metadata.uploader_handle,
+            upload_date=metadata.upload_date,
         )
     except (TranscriptNotAvailable, YtDlpNotFound):
         pass  # Try audio fallback

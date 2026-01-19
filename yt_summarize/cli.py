@@ -95,6 +95,42 @@ def _sanitize_dirname(name: str, max_length: int = 100) -> str:
     return name or "untitled"
 
 
+def _build_frontmatter(meta: dict) -> str:
+    """Build YAML front matter for the summary."""
+    lines = ["---"]
+
+    # Title
+    title = meta.get("title", "Untitled")
+    # Escape quotes in title for YAML
+    title = title.replace('"', '\\"')
+    lines.append(f'title: "{title}"')
+
+    # Source URL
+    if source_url := meta.get("source_url"):
+        lines.append(f"source: {source_url}")
+
+    # Upload date (original video date)
+    if upload_date := meta.get("upload_date"):
+        lines.append(f"date: {upload_date}")
+
+    # Author section
+    if channel := meta.get("channel"):
+        lines.append("author:")
+        lines.append(f'  name: "{channel}"')
+        if channel_url := meta.get("channel_url"):
+            lines.append(f"  url: {channel_url}")
+        if handle := meta.get("uploader_handle"):
+            lines.append(f"  youtube: {handle}")
+
+    # Processing metadata
+    if fetched_at := meta.get("fetched_at"):
+        lines.append(f"fetched: {fetched_at}")
+
+    lines.append("---")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _write_outputs(
     out_dir: Path,
     transcript_text: str,
@@ -111,9 +147,10 @@ def _write_outputs(
     # Write transcript
     (out_dir / "transcript.txt").write_text(transcript_text)
 
-    # Write summary
+    # Write summary with front matter
     if md_summary:
-        (out_dir / "summary.md").write_text(md_summary)
+        frontmatter = _build_frontmatter(meta)
+        (out_dir / "summary.md").write_text(frontmatter + md_summary)
 
     if json_summary:
         (out_dir / "summary.json").write_text(
@@ -272,6 +309,9 @@ def summarize(
                                 "video_id": result.video_id,
                                 "title": result.title,
                                 "channel": result.channel,
+                                "channel_url": result.channel_url,
+                                "uploader_handle": result.uploader_handle,
+                                "upload_date": result.upload_date,
                                 "fetched_at": datetime.now().isoformat(),
                                 "method": method,
                                 "lang": lang,
@@ -288,6 +328,9 @@ def summarize(
                             "video_id": result.video_id,
                             "title": result.title,
                             "channel": result.channel,
+                            "channel_url": result.channel_url,
+                            "uploader_handle": result.uploader_handle,
+                            "upload_date": result.upload_date,
                             "fetched_at": datetime.now().isoformat(),
                             "method": method,
                             "lang": result.lang,
