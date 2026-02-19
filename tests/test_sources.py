@@ -28,6 +28,10 @@ class TestExtractVideoId:
         url = "https://www.youtube.com/embed/dQw4w9WgXcQ"
         assert extract_video_id(url) == "dQw4w9WgXcQ"
 
+    def test_shorts_url(self) -> None:
+        url = "https://www.youtube.com/shorts/xkzf_kkFw9o"
+        assert extract_video_id(url) == "xkzf_kkFw9o"
+
     def test_url_with_params(self) -> None:
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=120"
         assert extract_video_id(url) == "dQw4w9WgXcQ"
