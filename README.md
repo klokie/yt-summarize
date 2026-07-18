@@ -42,7 +42,7 @@ yt-summarize "https://www.youtube.com/watch?v=VIDEO" --force
 
 | Flag                  | Default                  | Description                         |
 | --------------------- | ------------------------ | ----------------------------------- |
-| `--out`               | `./yt-summary/<id>/`     | Output directory                    |
+| `--out`               | vault, else `./yt-summary` | Output directory (see below)      |
 | `--lang`              | `auto`                   | Language code (en, sv, etc.)        |
 | `--format`            | `md`                     | Output format: md, json, or md,json |
 | `--force`             | false                    | Ignore cache                        |
@@ -63,12 +63,24 @@ export OPENAI_API_KEY="sk-..."
 ## Output Files
 
 ```
-yt-summary/<video-id>/
+<out>/<video-title>/
 ├── meta.json        # Video metadata
 ├── transcript.txt   # Raw transcript
 ├── summary.md       # Markdown summary
 └── summary.json     # Structured JSON (optional)
 ```
+
+### Where summaries land
+
+Without `--out`, the output directory is resolved in this order:
+
+1. `$YT_SUMMARIZE_OUT` if set.
+2. `~/vault/personal/learning/yt-summary/` if that directory exists — the Obsidian
+   vault, so summaries file themselves next to the course study notes.
+3. `./yt-summary/` — portable fallback on any other machine.
+
+Audio for the speech-to-text fallback is written to the system temp dir, never the
+output directory (the vault is text-only).
 
 ## Development
 

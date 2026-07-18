@@ -1,6 +1,8 @@
 """CLI entry point for yt-summarize."""
 
 import json
+import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -66,6 +68,25 @@ cache_app = typer.Typer(help="Manage cache.")
 app.add_typer(cache_app, name="cache")
 
 console = Console()
+
+
+def _default_out_base() -> Path:
+    """Base directory new summaries are filed under.
+
+    Resolution order:
+      1. $YT_SUMMARIZE_OUT if set (explicit override).
+      2. ~/vault/personal/learning/yt-summary if it exists — the Obsidian vault
+         (~/vault is a symlink present on the user's Macs), so summaries land
+         next to the course notes instead of wherever the tool was run.
+      3. ./yt-summary — portable fallback for any other machine.
+    """
+    env = os.environ.get("YT_SUMMARIZE_OUT")
+    if env:
+        return Path(env).expanduser()
+    vault = Path("~/vault/personal/learning/yt-summary").expanduser()
+    if vault.is_dir():
+        return vault
+    return Path("./yt-summary")
 
 
 def _is_youtube_url(source: str) -> bool:
@@ -163,7 +184,12 @@ def summarize(
     source: Annotated[str, typer.Argument(help="YouTube URL or local .txt file path")],
     out: Annotated[
         Path | None,
-        typer.Option("--out", "-o", help="Output directory"),
+        typer.Option(
+            "--out",
+            "-o",
+            help="Output directory (default: $YT_SUMMARIZE_OUT, else the vault's "
+            "yt-summary folder if present, else ./yt-summary)",
+        ),
     ] = None,
     lang: Annotated[
         str,
@@ -226,7 +252,7 @@ def summarize(
     # For YouTube, we'll determine output dir after getting the title
     # For local files, use the filename stem
     if out is None and not is_youtube:
-        out = Path("./yt-summary") / Path(source).stem
+        out = _default_out_base() / Path(source).stem
 
     transcript_text: str | None = None
     video_id: str | None = None
@@ -266,9 +292,12 @@ def summarize(
 
             if transcript_text is None:
                 progress.add_task("Fetching transcript...", total=None)
-                # Use video_id for audio temp dir (title not known yet)
+                # Audio is scratch for STT fallback — keep it in the system temp
+                # dir, never under the output base (the vault is text-only).
                 audio_dir = (
-                    Path("./yt-summary") / video_id / ".audio" if not no_audio_fallback else None
+                    Path(tempfile.gettempdir()) / "yt-summarize" / video_id / ".audio"
+                    if not no_audio_fallback
+                    else None
                 )
                 try:
                     result = fetch_youtube_transcript(
@@ -401,7 +430,7 @@ def summarize(
     # Determine output directory from title (if not user-provided)
     if not user_provided_out and is_youtube:
         video_title = meta.get("title", video_id)
-        out = Path("./yt-summary") / _sanitize_dirname(video_title)
+        out = _default_out_base() / _sanitize_dirname(video_title)
 
     console.print(f"[green]✓[/green] Transcript: {len(transcript_text)} chars")
 
